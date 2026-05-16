@@ -1,184 +1,143 @@
-# Tech Gadget Store: E-Commerce SPA
+# Tech Gadget Store: E-Commerce Shopping Cart SPA
 
 ## 1. Project Overview
-This project implements a dynamic, Single-Page Application (SPA) designed to simulate a modern e-commerce environment. The primary problem this application solves is reducing user friction during the shopping experience. By decoupling the frontend from the backend and utilizing asynchronous data fetching, the system allows users to browse products, manipulate cart quantities, and view real-time total calculations without experiencing disruptive page reloads.
+Tech Gadget Store is a single-page e-commerce shopping cart application for browsing products, registering or logging in, managing a personal cart, and viewing user carts through an admin account. The app solves the common shopping flow problem of letting customers search products and update cart quantities without page reloads.
 
 ## 2. Technical Stack
-**Frontend Architecture**
-* **Library:** React.js (Bootstrapped with Vite)
-* **Styling:** Vanilla CSS with responsive CSS Grid/Flexbox layouts
-* **State Management:** React Hooks (`useState`, `useEffect`)
+**Frontend**
+* React with Vite
+* Vanilla CSS with responsive Grid/Flexbox layouts
+* React Hooks for local state and API-driven rendering
 
-**Backend Architecture**
-* **Environment:** Node.js
-* **Framework:** Express.js
-* **Database:** MongoDB
-* **ODM:** Mongoose 
+**Backend**
+* Node.js
+* Express
+* MongoDB
+* Mongoose
+* Node `crypto` module for PBKDF2 password hashing and HMAC-SHA256 JWTs
 
-**Network / API**
-* RESTful API design handling native JSON payloads
-* Cross-Origin Resource Sharing (CORS) enabled for decoupled port communication
+**API**
+* REST endpoints returning JSON
+* CORS enabled for the Vite development server
+* JWT bearer tokens for authenticated cart and admin requests
 
 ## 3. Core Features
-* **True SPA Behavior:** Zero page reloads; dynamic DOM rendering based on state.
-* **Full CRUD Implementation:**
-  * **Create:** Add new items to the shopping cart.
-  * **Read:** Fetch product catalogs and current cart states from the database.
-  * **Update:** Modify existing cart item quantities.
-  * **Delete:** Remove items entirely when quantity drops below one or upon explicit request.
-* **Dynamic Cart Calculation:** Real-time financial totals computed securely on state changes.
-* **Responsive UI:** Mobile-first layout adaptations using modern CSS practices.
+* **Single-page app behavior:** React dynamically redraws the current page instead of loading separate HTML pages.
+* **Registration and login:** Users can create accounts and log in. Passwords are salted and hashed before storage.
+* **JWT authentication:** Login and registration return a JWT used to protect personal cart and admin endpoints.
+* **Live product search:** The product grid filters immediately while the user types.
+* **User-owned carts:** Each cart item belongs to the logged-in user.
+* **Admin cart overview:** Admin users can view all users and the contents/totals of their shopping carts.
+* **CRUD operations on MongoDB:**
+  * **Create:** Register users and add products to a cart.
+  * **Read:** Fetch products, user carts, login profile data, and admin cart summaries.
+  * **Update:** Change cart item quantities.
+  * **Delete:** Remove cart items.
 
-## 4. Folder Structure
-```
-32516_Assignment1/
-│
-├── backend/
-│   ├── .env               # Environment variables (Port, MongoDB URI)
-│   ├── package.json       # Backend dependencies
-│   ├── seed.js            # Initial database population script
-│   └── server.js          # Express server setup and REST API routes
-│
-└── frontend/
-    ├── package.json       # Frontend dependencies (Vite, React)
-    ├── index.html         # Single HTML entry point
-    ├── .gitignore         # Git ignore file
-    ├── public/
-    │   └── images/        # Product images
-    │       ├── headphone.png   
-    │       ├── keyboard.png
-    │       ├── monitor.png
-    │       └── mouse.png
-    └── src/
-        ├── App.jsx        # Main application logic and API integration
-        ├── App.css        # Global styles and UI layout
-        └── main.jsx       # React DOM rendering
-```
-## 5. Installation & Setup Instructions
+## 4. Database Entities
+* **User:** name, email, password hash, password salt, role.
+* **Product:** name, price, image.
+* **CartItem:** user reference, product reference, quantity.
 
+## 5. Folder Structure
+```text
+32516_Assignment2/
+|-- backend/
+|   |-- .env                  # Local environment variables
+|   |-- package.json          # Backend dependencies and scripts
+|   |-- seed.js               # Product seed script and optional admin seed
+|   `-- server.js             # Express API, models, auth, cart, admin routes
+|-- database_export/
+|   |-- shopping-cart.cartitems.json
+|   `-- shopping-cart.products.json
+|-- Frontend/
+|   |-- index.html            # Single HTML entry point
+|   |-- package.json          # Frontend dependencies and scripts
+|   |-- public/
+|   |   `-- images/           # Product images
+|   `-- src/
+|       |-- App.jsx           # Main React SPA logic
+|       |-- App.css           # Application styling
+|       `-- main.jsx          # React DOM rendering
+|-- package.json
+`-- ReadMe.md
+```
+
+## 6. Installation and Setup
 ### Prerequisites
+* Node.js v18 or newer
+* MongoDB Community Server or a MongoDB Atlas connection string
 
-* **Node.js** (v14 or higher)
-* **MongoDB Community Server** (v4.4 or higher)
+### Backend
+```bash
+cd backend
+npm install
+```
 
-**Step 1:** Install and Configure MongoDB (Local Windows Setup)
+Create `backend/.env`:
+```env
+PORT=5000
+MONGO_URI=mongodb://127.0.0.1:27017/shopping-cart
+JWT_SECRET=replace-with-a-long-random-secret
+```
 
-* Navigate to the [MongoDB Download Center](https://www.mongodb.com/try/download/community).
+Optional seeded admin account:
+```env
+ADMIN_NAME=Store Admin
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=change-this-password
+```
 
-* Download the MongoDB Community Server .msi installer for Windows.
+Seed products:
+```bash
+node seed.js
+```
 
-* Run the installer. During the setup:
+Start the API:
+```bash
+npm run dev
+```
 
-  * Ensure **"Install MongoDB as a Service"** is checked.
+### Frontend
+```bash
+cd Frontend
+npm install
+npm run dev
+```
 
-  * Ensure **"Install MongoDB Compass"** is checked.
+Open the Vite URL shown in the terminal, usually `http://localhost:5173`.
 
-* Open MongoDB Compass and connect to the default local URI: `mongodb://localhost:27017` or `mongodb://127.0.0.1:27017`.
+## 7. API Endpoints
+**Authentication**
+* `POST /api/auth/register` - create a user or admin account and return a JWT.
+* `POST /api/auth/login` - log in and return a JWT.
+* `GET /api/auth/me` - read the current user from a JWT.
 
-**Step 2:** Backend Setup
+**Products**
+* `GET /api/products` - read all products.
+* `GET /api/products?q=keyboard` - server-side product search support.
 
-* Open a terminal and navigate to the backend directory:
+**User Cart**
+* `GET /api/cart` - read the logged-in user's cart.
+* `POST /api/cart` - add a product to the logged-in user's cart.
+* `PUT /api/cart/:id` - update a cart item quantity.
+* `DELETE /api/cart/:id` - remove a cart item.
 
-    ```bash
-    cd backend
-    ```
+**Admin**
+* `GET /api/admin/users/carts` - admin-only view of every user's cart and total.
 
-* Install the required dependencies:
+## 8. Workload Allocation
+This project was completed individually. All design, implementation, testing, and documentation work was completed by the sole student contributor.
 
-    ```bash
-    npm install
-    ```
+| Contributor | Main responsibility | Main files |
+| --- | --- | --- |
+| Sole student contributor | Backend API, MongoDB models, password hashing, JWT authentication, user/admin roles, protected cart CRUD, admin cart overview, product seeding, React SPA interface, live search, cart interactions, responsive styling, testing, and documentation | `backend/server.js`, `backend/seed.js`, `Frontend/src/App.jsx`, `Frontend/src/App.css`, `ReadMe.md`, `database_export/` |
 
-* Create a `.env` file in the `backend/` folder and add your configuration:
+## 9. Troubleshooting
+**MongoDB connection error:** Make sure MongoDB is running and `MONGO_URI` points to the correct database.
 
-    ```
-    PORT=5000
-    MONGO_URI=mongodb://127.0.0.1:27017/shopping-cart
-    ```
+**JWT/session errors after server restart:** Set a persistent `JWT_SECRET` in `.env`. Without it, the backend creates a temporary development secret each time it starts.
 
-* Seed the database with initial product data (run this only once):
+**No products showing:** Run `node seed.js` inside `backend/`.
 
-    ```bash
-    node seed.js
-    ```
-
-* Start the backend server:
-
-    ```bash
-    npm run dev
-    ```
-    The backend will run on `http://localhost:5000`
-
-**Step 3:** Frontend Setup
-
-* Open a new terminal window and navigate to the frontend directory:
-
-    ```bash
-    cd frontend
-    ```
-
-* Install the required dependencies:
-
-    ```bash
-    npm install
-    ```
-
-* Start the Vite development server:
-
-    ```bash
-    npm run dev
-    ```
-
-* The frontend will be available at the URL displayed in the terminal (typically `http://localhost:5173`).
-
-## 6. API Endpoints
-
-The backend provides the following RESTful API endpoints:
-
-* **GET `/api/products`** — Retrieve all products from the catalog
-* **GET `/api/cart`** — Fetch the current shopping cart
-* **POST `/api/cart`** — Add a new item to the cart
-* **PUT `/api/cart/:id`** — Update the quantity of an existing cart item
-* **DELETE `/api/cart/:id`** — Remove an item from the cart
-
-All requests/responses use JSON format with CORS enabled for frontend integration.
-
-## 7. Challenges Overcome
-The most significant technical challenge was managing asynchronous state synchronization between the React frontend and the Express backend. When a user rapidly clicks the quantity adjustment buttons, it risked creating race conditions where the UI state desynchronized from the database state. This was resolved by implementing strict asynchronous fetch calls utilizing the PUT method, ensuring the local React state was only updated after receiving a successful HTTP 200 OK confirmation from the MongoDB cluster.
-
-## 8. Troubleshooting
-
-### MongoDB Connection Issues
-* **Error:** `MongoError: connect ECONNREFUSED 127.0.0.1:27017`
-  * **Solution:** Ensure MongoDB is running. On Windows, check that the MongoDB service is started (Services > MongoDB Server or restart using `net start MongoDB`).
-
-### Port Already in Use
-* **Error:** `EADDRINUSE: address already in use :::5000` (Backend)
-  * **Solution:** Change the `PORT` in `.env` to an available port (e.g., `5001`) or kill the process using the port.
-* **Error:** Port 5173 already in use (Frontend)
-  * **Solution:** Vite will automatically try the next available port. Check the terminal output for the correct URL.
-
-### Dependencies Installation Fails
-* **Error:** `npm ERR! code E404` or missing dependencies
-  * **Solution:** Clear npm cache and reinstall:
-    ```bash
-    npm cache clean --force
-    npm install
-    ```
-
-### Database Not Seeded
-* **Error:** No products displaying in the cart UI
-  * **Solution:** Ensure you ran `node seed.js` in the backend directory and verify data is present in MongoDB Compass.
-
-### CORS Errors in Browser Console
-* **Error:** `Access to XMLHttpRequest blocked by CORS policy`
-  * **Solution:** Verify the backend server is running on `http://localhost:5000` and the CORS configuration in `server.js` includes your frontend's origin.
-
-## 9. Running in Production
-
-For production deployment:
-* Set `NODE_ENV=production`
-* Update `MONGO_URI` to point to a production MongoDB instance (e.g., MongoDB Atlas)
-* Build the frontend: `cd frontend && npm run build`
-* Serve the built frontend files from the backend or use a separate hosting service
-* Use environment variables from a secure configuration management system (never commit `.env` files)
+**Admin panel not visible:** Register with the "Sign up as admin" toggle enabled, or seed an admin by setting `ADMIN_EMAIL` and `ADMIN_PASSWORD` before running `node seed.js`.
