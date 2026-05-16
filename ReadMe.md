@@ -49,7 +49,8 @@ Tech Gadget Store is a single-page e-commerce shopping cart application for brow
 |   `-- server.js             # Express API, models, auth, cart, admin routes
 |-- database_export/
 |   |-- shopping-cart.cartitems.json
-|   `-- shopping-cart.products.json
+|   |-- shopping-cart.products.json
+|   `-- shopping-cart.users.json
 |-- Frontend/
 |   |-- index.html            # Single HTML entry point
 |   |-- package.json          # Frontend dependencies and scripts
