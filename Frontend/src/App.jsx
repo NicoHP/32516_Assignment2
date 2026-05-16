@@ -84,7 +84,14 @@ function AuthModal({
               onChange={(event) => setAuthForm({ ...authForm, password: event.target.value })}
               required
               minLength="6"
+              pattern={authMode === 'register' ? '(?=.*[a-z])(?=.*[A-Z]).{6,}' : undefined}
+              title="Password must be at least 6 characters and include 1 uppercase and 1 lowercase letters"
             />
+            {authMode === 'register' && (
+              <span className="field-hint">
+                At least 6 characters with uppercase and lowercase letters.
+              </span>
+            )}
           </label>
           {authMode === 'register' && (
             <label className="toggle-row">

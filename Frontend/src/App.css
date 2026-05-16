@@ -198,6 +198,13 @@ h1 {
   outline: 3px solid rgba(63, 109, 84, 0.16);
 }
 
+.field-hint {
+  color: #647267;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
 .toggle-row {
   align-items: center;
   background: #f8faf5;

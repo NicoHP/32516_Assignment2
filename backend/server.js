@@ -90,6 +90,10 @@ const safeUser = (user) => ({
     role: user.role,
 });
 
+const isStrongPassword = (password) => (
+    password.length >= 6 && /[a-z]/.test(password) && /[A-Z]/.test(password)
+);
+
 const authRequired = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization || '';
@@ -136,8 +140,8 @@ app.post('/api/auth/register', asyncRoute(async (req, res) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
         return res.status(400).json({ message: 'Enter a valid email address' });
     }
-    if (String(password || '').length < 6) {
-        return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    if (!isStrongPassword(String(password || ''))) {
+        return res.status(400).json({ message: 'Password must be at least 6 characters and include uppercase and lowercase letters' });
     }
 
     const existingUser = await User.findOne({ email: cleanEmail });
