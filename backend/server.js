@@ -9,15 +9,18 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Uses a configured JWT secret, or creates a temporary one for local development.
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(48).toString('hex');
 if (!process.env.JWT_SECRET) {
     console.warn('JWT_SECRET is not set. A temporary development secret was generated for this server session.');
 }
 
+// Connects the API server to MongoDB.
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('Connected to MongoDB successfully'))
     .catch((err) => console.error('MongoDB connection error:', err));
 
+// Product documents store the catalog items shown in the frontend.
 const ProductSchema = new mongoose.Schema({
     name: { type: String, required: true, trim: true },
     price: { type: Number, required: true, min: 0 },
@@ -25,6 +28,7 @@ const ProductSchema = new mongoose.Schema({
 });
 const Product = mongoose.model('Product', ProductSchema);
 
+// User documents store account details, password hashes, and user/admin roles.
 const UserSchema = new mongoose.Schema({
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -34,16 +38,20 @@ const UserSchema = new mongoose.Schema({
 }, { timestamps: true });
 const User = mongoose.model('User', UserSchema);
 
+// Cart items link one user to one product with a quantity.
 const CartItemSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
     quantity: { type: Number, default: 1, min: 1 },
 }, { timestamps: true });
+// Prevents duplicate cart rows for the same user and product.
 CartItemSchema.index({ userId: 1, productId: 1 }, { unique: true });
 const CartItem = mongoose.model('CartItem', CartItemSchema);
 
+// Converts strings to base64url format for manual JWT creation.
 const base64Url = (input) => Buffer.from(input).toString('base64url');
 
+// Hashes a password with PBKDF2 and a unique salt.
 const hashPassword = (password, salt = crypto.randomBytes(16).toString('hex')) => {
     const passwordHash = crypto
         .pbkdf2Sync(password, salt, 100000, 64, 'sha512')
@@ -51,11 +59,13 @@ const hashPassword = (password, salt = crypto.randomBytes(16).toString('hex')) =
     return { passwordHash, salt };
 };
 
+// Checks a login password against the stored password hash.
 const verifyPassword = (password, user) => {
     const { passwordHash } = hashPassword(password, user.salt);
     return crypto.timingSafeEqual(Buffer.from(passwordHash, 'hex'), Buffer.from(user.passwordHash, 'hex'));
 };
 
+// Creates a signed JWT that expires after 8 hours.
 const signJwt = (payload) => {
     const header = { alg: 'HS256', typ: 'JWT' };
     const tokenPayload = {
@@ -67,6 +77,7 @@ const signJwt = (payload) => {
     return `${body}.${signature}`;
 };
 
+// Verifies a JWT signature and expiry time.
 const verifyJwt = (token) => {
     const [header, payload, signature] = token.split('.');
     if (!header || !payload || !signature) return null;
@@ -83,6 +94,7 @@ const verifyJwt = (token) => {
     return decoded;
 };
 
+// Removes sensitive fields before sending user data to the frontend.
 const safeUser = (user) => ({
     id: user._id,
     name: user.name,
@@ -90,10 +102,12 @@ const safeUser = (user) => ({
     role: user.role,
 });
 
+// Checks the minimum password rules used by registration.
 const isStrongPassword = (password) => (
     password.length >= 6 && /[a-z]/.test(password) && /[A-Z]/.test(password)
 );
 
+// Middleware that requires a valid bearer token and attaches the user to the request.
 const authRequired = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization || '';
@@ -113,6 +127,7 @@ const authRequired = async (req, res, next) => {
     }
 };
 
+// Middleware that only allows admin users through.
 const adminRequired = (req, res, next) => {
     if (req.user.role !== 'admin') {
         return res.status(403).json({ message: 'Admin access required' });
@@ -120,6 +135,7 @@ const adminRequired = (req, res, next) => {
     next();
 };
 
+// Wraps async route handlers so errors reach the central error handler.
 const asyncRoute = (handler) => async (req, res, next) => {
     try {
         await handler(req, res, next);
@@ -128,6 +144,7 @@ const asyncRoute = (handler) => async (req, res, next) => {
     }
 };
 
+// CREATE: Registers a new account and returns a logged-in session token.
 app.post('/api/auth/register', asyncRoute(async (req, res) => {
     const { name, email, password } = req.body;
     const cleanName = String(name || '').trim();
@@ -162,6 +179,7 @@ app.post('/api/auth/register', asyncRoute(async (req, res) => {
     res.status(201).json({ user: safeUser(user), token });
 }));
 
+// READ: Finds an existing user and returns a session token when credentials match.
 app.post('/api/auth/login', asyncRoute(async (req, res) => {
     const cleanEmail = String(req.body.email || '').trim().toLowerCase();
     const password = String(req.body.password || '');
@@ -175,10 +193,12 @@ app.post('/api/auth/login', asyncRoute(async (req, res) => {
     res.json({ user: safeUser(user), token });
 }));
 
+// READ: Returns the current logged-in user's safe profile data.
 app.get('/api/auth/me', authRequired, (req, res) => {
     res.json({ user: safeUser(req.user) });
 });
 
+// READ: Returns all products, optionally filtered by a search query.
 app.get('/api/products', asyncRoute(async (req, res) => {
     const q = String(req.query.q || '').trim();
     const filter = q ? { name: { $regex: q, $options: 'i' } } : {};
@@ -186,11 +206,13 @@ app.get('/api/products', asyncRoute(async (req, res) => {
     res.json(products);
 }));
 
+// READ: Returns the logged-in user's cart with product details included.
 app.get('/api/cart', authRequired, asyncRoute(async (req, res) => {
     const cart = await CartItem.find({ userId: req.user._id }).populate('productId').sort({ createdAt: 1 });
     res.json(cart);
 }));
 
+// CREATE: Adds a product to the user's cart, increasing quantity if it already exists.
 app.post('/api/cart', authRequired, asyncRoute(async (req, res) => {
     const { productId } = req.body;
     if (!mongoose.Types.ObjectId.isValid(productId)) {
@@ -211,6 +233,7 @@ app.post('/api/cart', authRequired, asyncRoute(async (req, res) => {
     res.status(201).json(item);
 }));
 
+// UPDATE/DELETE: Updates a cart item quantity, deleting the item when quantity is below one.
 app.put('/api/cart/:id', authRequired, asyncRoute(async (req, res) => {
     const quantity = Number(req.body.quantity);
     if (!Number.isInteger(quantity)) {
@@ -231,12 +254,14 @@ app.put('/api/cart/:id', authRequired, asyncRoute(async (req, res) => {
     res.json(item);
 }));
 
+// DELETE: Deletes one cart item owned by the logged-in user.
 app.delete('/api/cart/:id', authRequired, asyncRoute(async (req, res) => {
     const item = await CartItem.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
     if (!item) return res.status(404).json({ message: 'Cart item not found' });
     res.json({ message: 'Item deleted' });
 }));
 
+// READ: Returns all users with their cart contents and totals for admins.
 app.get('/api/admin/users/carts', authRequired, adminRequired, asyncRoute(async (req, res) => {
     const users = await User.find().sort({ createdAt: 1 });
     const carts = await CartItem.find().populate('productId').sort({ createdAt: 1 });
@@ -254,6 +279,7 @@ app.get('/api/admin/users/carts', authRequired, adminRequired, asyncRoute(async 
     res.json(cartByUser);
 }));
 
+// Converts thrown errors into consistent JSON responses.
 app.use((err, req, res, next) => {
     console.error(err);
     if (err.name === 'ValidationError') {

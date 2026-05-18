@@ -4,6 +4,7 @@ import './App.css';
 const API_URL = 'http://localhost:5000/api';
 const SESSION_KEY = 'tech-store-session';
 
+// Displays the login and registration form inside a modal dialog.
 function AuthModal({
   authMode,
   error,
@@ -20,6 +21,7 @@ function AuthModal({
     signUpAsAdmin: false,
   });
 
+  // Sends either login credentials or full registration details to the parent component.
   const handleSubmit = (event) => {
     event.preventDefault();
     const payload = authMode === 'register'
@@ -121,6 +123,7 @@ function AuthModal({
   );
 }
 
+// Main store application that manages products, authentication, carts, and admin views.
 function App() {
   const [products, setProducts] = useState([]);
   const [cart, setCart] = useState([]);
@@ -145,6 +148,7 @@ function App() {
   const user = session?.user;
   const isAdmin = user?.role === 'admin';
 
+  // Wraps fetch calls with JSON headers, auth tokens, and shared error handling.
   const apiFetch = useCallback(async (path, options = {}) => {
     const headers = {
       'Content-Type': 'application/json',
@@ -163,12 +167,14 @@ function App() {
     return data;
   }, [session?.token]);
 
+  // Clears the saved login session and returns the app to guest mode.
   const logout = useCallback(() => {
     localStorage.removeItem(SESSION_KEY);
     setSession(null);
     setStatusMessage('');
   }, []);
 
+  // Handles API errors and logs the user out when their token is no longer valid.
   const handleApiError = useCallback((err) => {
     if (err.message.toLowerCase().includes('token') || err.message.toLowerCase().includes('authentication')) {
       logout();
@@ -178,6 +184,7 @@ function App() {
     setError(err.message);
   }, [logout]);
 
+  // Loads the product catalog from the backend.
   const fetchProducts = useCallback(async () => {
     try {
       const data = await apiFetch('/products');
@@ -189,6 +196,7 @@ function App() {
     }
   }, [apiFetch]);
 
+  // Loads the current user's cart items.
   const fetchCart = useCallback(async () => {
     try {
       const data = await apiFetch('/cart');
@@ -198,6 +206,7 @@ function App() {
     }
   }, [apiFetch, handleApiError]);
 
+  // Loads every user's cart for the admin dashboard.
   const fetchAdminCarts = useCallback(async () => {
     try {
       const data = await apiFetch('/admin/users/carts');
@@ -223,16 +232,19 @@ function App() {
     if (session.user.role === 'admin') fetchAdminCarts();
   }, [fetchAdminCarts, fetchCart, session]);
 
+  // Filters products by the current search text.
   const filteredProducts = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
     if (!query) return products;
     return products.filter((product) => product.name.toLowerCase().includes(query));
   }, [products, searchTerm]);
 
+  // Calculates the total price of all items in the current cart.
   const cartTotal = useMemo(() => (
     cart.reduce((sum, item) => sum + ((item.productId?.price || 0) * item.quantity), 0)
   ), [cart]);
 
+  // Submits login or registration data and stores the returned session.
   const handleAuthSubmit = async (payload, mode) => {
     setIsBusy(true);
     setError('');
@@ -256,11 +268,13 @@ function App() {
     }
   };
 
+  // Refreshes cart data after a cart action and refreshes admin data when needed.
   const refreshUserData = async () => {
     await fetchCart();
     if (isAdmin) await fetchAdminCarts();
   };
 
+  // Adds a product to the cart, or asks guests to log in first.
   const addToCart = async (productId) => {
     if (!user) {
       setAuthMode('login');
@@ -282,6 +296,7 @@ function App() {
     }
   };
 
+  // Updates item quantity and confirms deletion when the quantity drops below one.
   const updateQuantity = async (id, newQuantity) => {
     if (newQuantity < 1 && !window.confirm('Remove this item from your cart?')) {
       return;
@@ -298,6 +313,7 @@ function App() {
     }
   };
 
+  // Removes an item from the cart after user confirmation.
   const removeFromCart = async (id) => {
     if (!window.confirm('Remove this item from your cart?')) {
       return;
@@ -311,12 +327,14 @@ function App() {
     }
   };
 
+  // Changes between login and registration modes in the auth modal.
   const switchAuthMode = (mode) => {
     setAuthMode(mode);
     setError('');
     setStatusMessage('');
   };
 
+  // Opens the auth modal in the requested mode.
   const openAuthModal = (mode) => {
     setAuthMode(mode);
     setShowAuthModal(true);
@@ -324,6 +342,7 @@ function App() {
     setStatusMessage('');
   };
 
+  // Closes the auth modal and clears any modal messages.
   const closeAuthModal = () => {
     setShowAuthModal(false);
     setError('');
