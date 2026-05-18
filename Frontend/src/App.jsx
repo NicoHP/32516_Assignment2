@@ -283,6 +283,10 @@ function App() {
   };
 
   const updateQuantity = async (id, newQuantity) => {
+    if (newQuantity < 1 && !window.confirm('Remove this item from your cart?')) {
+      return;
+    }
+
     try {
       await apiFetch(`/cart/${id}`, {
         method: 'PUT',
@@ -295,6 +299,10 @@ function App() {
   };
 
   const removeFromCart = async (id) => {
+    if (!window.confirm('Remove this item from your cart?')) {
+      return;
+    }
+
     try {
       await apiFetch(`/cart/${id}`, { method: 'DELETE' });
       await refreshUserData();
@@ -372,9 +380,6 @@ function App() {
               <p className="eyebrow">Admin Dashboard</p>
               <h2>User Carts</h2>
             </div>
-            <button className="ghost-btn" type="button" onClick={fetchAdminCarts}>
-              Refresh
-            </button>
           </div>
 
           {adminCarts.length === 0 ? (
